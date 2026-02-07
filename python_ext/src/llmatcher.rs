@@ -33,7 +33,9 @@ impl LLExecutor {
     #[pyo3(signature = (num_threads=None))]
     fn py_new(num_threads: Option<usize>) -> PyResult<Self> {
         let num_threads = num_threads.unwrap_or_else(|| {
-            let n = std::thread::available_parallelism().unwrap().get();
+            let n = std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1);
             // by default run on 80% of available threads but not more than 32
             (n * 80 / 100).clamp(1, 32)
         });

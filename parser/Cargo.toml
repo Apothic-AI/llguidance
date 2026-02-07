@@ -36,7 +36,7 @@ referencing = ["dep:referencing"]
 ahash = ["derivre/ahash"]
 
 [lib]
-crate-type = ["staticlib", "rlib", "cdylib"]
+crate-type = ["staticlib", "rlib"]
 
 [dev-dependencies]
 criterion = "0.8.1"

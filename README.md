@@ -119,6 +119,17 @@ For Python bindings:
 This builds the Python bindings for the library and runs the tests
 (which mostly live in the Guidance repo - it will clone it).
 
+For a core WASM build (`llguidance.wasm`):
+
+- run `./scripts/build-wasm-core.sh`
+- artifact is written under `target/wasm32-unknown-unknown/release/**/llguidance*.wasm`
+
+For a WASM Python wheel (WASI target):
+
+- run `./scripts/build-wasm-wheel.sh`
+- wheel artifact(s) are written to `target/wasm-wheels`
+- default target is `wasm32-wasip1`; override with `LLG_WASM_PY_TARGET=<target>`
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a

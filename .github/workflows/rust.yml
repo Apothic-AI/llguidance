@@ -84,6 +84,21 @@ jobs:
         name: wheels
         path: target/wheels/*
 
+  wasm-core:
+    name: WASM Core Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build core wasm artifact
+      run: ./scripts/build-wasm-core.sh
+
+    - name: Upload core wasm artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: llguidance-wasm-core
+        path: target/wasm32-unknown-unknown/release/**/llguidance*.wasm
+
   msrv:
     name: MSRV Check
 

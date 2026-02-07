@@ -7,9 +7,10 @@ Produce two deliverables from this repository:
 
 ## Implementation status
 - Core WASM build implemented and validated via `./scripts/build-wasm-core.sh`.
-- WASM Python wheel build implemented and validated via `./scripts/build-wasm-wheel.sh` targeting `wasm32-wasip1`.
+- WASM Python wheel build implemented and validated via `./scripts/build-wasm-wheel.sh` targeting Pyodide/emscripten.
 - CI jobs added for both.
-- Note: `wasm32-unknown-emscripten` wheel build is currently not reproducible in this repo/toolchain combination (link/export failures), so CI uses WASI for now.
+- Pyodide-compatible wheel artifact now builds at:
+  - `target/pyodide-wheels/llguidance-1.5.0-cp39-abi3-pyodide_2025_0_wasm32.whl`
 
 ## What the codebase already supports
 
@@ -20,15 +21,17 @@ Produce two deliverables from this repository:
 
 ### Python extension crate (`python_ext`)
 - Python packaging uses `maturin` + `pyo3` (`pyproject.toml`, `python_ext/Cargo.toml`).
-- Local compile checks show `wasm32-wasip1` wheel builds reproducibly with `maturin`.
+- Local build checks show Pyodide wheel builds reproducibly via `pyodide build` (emscripten side-module flow).
 
 ### Current gaps
-- No WASM build scripts or CI jobs exist (`.github/workflows/*` only build native wheels and native Rust).
 - Core `llguidance` default features are not WASM-`unknown-unknown` safe:
   - `cargo check -p llguidance --target wasm32-unknown-unknown --features wasm` fails in `getrandom`.
   - `cargo check -p llguidance --target wasm32-unknown-unknown --no-default-features --features wasm` succeeds.
   - `cargo check -p llguidance --target wasm32-unknown-unknown --no-default-features --features wasm,lark` succeeds.
-- `python_ext/src/llmatcher.rs` uses `std::thread::available_parallelism().unwrap()`; this is a likely runtime panic risk on some WASM runtimes.
+- Pyodide build requires the toolchain bundle from `pyodide-build`:
+  - Python 3.13
+  - Pyodide xbuildenv + emsdk
+  - Rust nightly/toolchain overrides configured by `pyodide config`
 
 ## Target build strategy
 
@@ -38,9 +41,9 @@ Produce two deliverables from this repository:
 - Output: `target/wasm32-unknown-unknown/release/llguidance.wasm`.
 
 ### Deliverable B: WASM Python wheel
-- Target: `wasm32-wasip1`.
-- Build backend: keep `maturin`/`pyo3`, with a WASM-specific build script and CI job.
-- Artifact: WASI wheel from `target/wasm-wheels`.
+- Target: Pyodide (`wasm32-unknown-emscripten` side-module ABI).
+- Build backend: `pyodide build` (which invokes `maturin` under a Pyodide cross-build environment).
+- Artifact: wheel from `target/pyodide-wheels` tagged `pyodide_*_wasm32`.
 
 ## Implementation plan
 
@@ -49,9 +52,10 @@ Produce two deliverables from this repository:
    - `rustup target add wasm32-unknown-unknown`
    - `cargo build -p llguidance --release --target wasm32-unknown-unknown --no-default-features --features wasm,lark`
 2. Add `scripts/build-wasm-wheel.sh` with:
-   - toolchain checks for Python and `maturin`
-   - `rustup target add wasm32-wasip1`
-   - `maturin build --release --target wasm32-wasip1`
+   - toolchain checks for Python 3.13 + `pyodide-build`
+   - Pyodide xbuildenv + emsdk setup
+   - Rust nightly + emscripten sysroot setup from `pyodide config`
+   - `pyodide build . -o target/pyodide-wheels`
 3. Document both in `README.md`.
 
 ## Phase 2: make runtime behavior WASM-safe
@@ -65,7 +69,7 @@ Produce two deliverables from this repository:
 1. Extend `.github/workflows/rust.yml`:
    - Add a job that checks core WASM build command.
 2. Extend `.github/workflows/wheels.yml` (or add a dedicated workflow):
-   - Add WASI wheel build job.
+   - Add Pyodide wheel build job.
    - Upload wheel artifact separately (distinct artifact name).
 3. Keep existing native wheel jobs unchanged.
 
@@ -74,8 +78,8 @@ Produce two deliverables from this repository:
    - Build succeeds.
    - `.wasm` exports include expected `llg_*` symbols.
 2. Python WASM validation:
-   - Wheel builds end-to-end for `wasm32-wasip1`.
-   - Artifact is emitted to `target/wasm-wheels`.
+   - Wheel builds end-to-end for Pyodide/emscripten.
+   - Artifact is emitted to `target/pyodide-wheels`.
 3. Regression validation:
    - Existing native Rust and native Python jobs still pass.
 

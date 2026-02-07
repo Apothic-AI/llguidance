@@ -1,48 +1,28 @@
-# Pyodide Wheel Build Failure Report
+# Pyodide Wheel Issue and Resolution
 
 ## Summary
-The attempt to produce a Pyodide-compatible wheel (`wasm32-unknown-emscripten`) failed due to multiple toolchain and linking issues in the current `pyo3` + `maturin` + emscripten path.
+The prior Pyodide wheel attempt failed because it used raw `maturin` on an ad-hoc emscripten setup. Pyodide needs a coordinated toolchain bundle (Python, emsdk, Rust nightly, and a custom emscripten Rust sysroot).
 
-A WASM wheel was successfully produced for `wasm32-wasip1`, but that wheel is **not** Pyodide-compatible.
+This branch now builds a working Pyodide-compatible wheel.
 
-## What failed
+## Root causes
+1. The build was running on Python 3.14, but available Pyodide xbuildenv releases currently match Python 3.13 for this flow.
+2. `pyodide` injects `-Z` Rust flags, but the environment had `RUSTUP_TOOLCHAIN=1.93.0` forced globally, so stable rustc was used.
+3. The codebase declared `rust-version = 1.87`, while Pyodide’s configured Rust toolchain is `nightly-2025-02-01` (`1.86.0-nightly`).
+4. The code used `is_multiple_of`, which is not available on that older Rust toolchain.
 
-## 1. Initial toolchain prerequisite failure
-- `scripts/build-wasm-wheel.sh` initially failed because `emcc` was not available.
-- This was resolved by installing and activating emsdk.
+## What changed
+1. `scripts/build-wasm-wheel.sh` now supports a Pyodide build path (default target):
+   - Uses `pyodide build` via `python -m pyodide_cli`.
+   - Installs/uses Pyodide xbuildenv and emsdk.
+   - Installs the Rust toolchain from `pyodide config`.
+   - Installs the Pyodide-provided `wasm32-unknown-emscripten` sysroot when configured.
+   - Forces `RUSTUP_TOOLCHAIN` only for the build command.
+2. Workspace MSRV was lowered to `1.86` (`Cargo.toml`) to match Pyodide’s toolchain.
+3. `is_multiple_of` call sites were replaced with equivalent arithmetic checks compatible with Rust 1.86.
 
-## 2. `maturin` requires nightly-only rust flag for emscripten flow
-- `maturin` passed `-Z link-native-libraries=no`, which fails on stable Rust.
-- Error observed:
-  - `the option 'Z' is only accepted on the nightly compiler`
+## Result
+A working wheel is produced:
+- `target/pyodide-wheels/llguidance-1.5.0-cp39-abi3-pyodide_2025_0_wasm32.whl`
 
-## 3. `cdylib` target support regression/behavior change on latest nightly
-- With latest nightly, build failed early with:
-  - `cannot produce cdylib ... target wasm32-unknown-emscripten`
-- This behavior was confirmed independently with a minimal test crate.
-
-## 4. Older toolchain progressed, but emscripten link failed (`main` missing)
-- Pinning to an older toolchain (`nightly-2025-09-20`) allowed compilation to proceed further.
-- Link then failed with:
-  - `undefined symbol: main`
-- This indicates emscripten was still linking as an executable-style module in that path.
-
-## 5. Side-module path progressed, but export handling failed
-- With side-module flags, linking advanced but then failed with invalid export names:
-  - `emcc: error: invalid export name: _ZN...`
-- This suggests rust-mangled/internal symbols were being treated as C exports by the emscripten/maturin export flow in this configuration.
-
-## 6. Dependency crate-type conflict amplified emscripten linking issues
-- `parser` (`llguidance`) originally exposed `cdylib` in crate types.
-- As a dependency of `llguidance_py`, this contributed to problematic wasm linking behavior.
-- We changed it to `["staticlib", "rlib"]` and forced `cdylib` only for the standalone core wasm build path.
-- This improved correctness for the WASI workflow but did not fully unblock emscripten/Pyodide wheel generation.
-
-## Current status
-- `wasm32-wasip1` wheel build works and is reproducible.
-- `wasm32-unknown-emscripten` wheel build remains broken in current setup.
-- Therefore, no Pyodide-compatible wheel is currently produced.
-
-## Practical implication
-The existing wheel artifact (`cp39-abi3-any`) built for `wasm32-wasip1` will not load in Pyodide, because Pyodide expects emscripten ABI/runtime compatibility.
-
+This wheel carries the Pyodide platform tag and is compatible with Pyodide’s emscripten ABI.

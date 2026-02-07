@@ -105,7 +105,7 @@ Thus, with 16 cores and a 10ms forward pass, llguidance can handle batch sizes u
 
 ## Building
 
-- [install rust](https://www.rust-lang.org/tools/install); 1.87 or later
+- [install rust](https://www.rust-lang.org/tools/install); 1.86 or later
 
 If you just need the C or Rust library (`llguidance`), 
 check the [parser](./parser/README.md) directory.
@@ -124,11 +124,18 @@ For a core WASM build (`llguidance.wasm`):
 - run `./scripts/build-wasm-core.sh`
 - artifact is written under `target/wasm32-unknown-unknown/release/**/llguidance*.wasm`
 
-For a WASM Python wheel (WASI target):
+For a WASM Python wheel:
 
 - run `./scripts/build-wasm-wheel.sh`
-- wheel artifact(s) are written to `target/wasm-wheels`
-- default target is `wasm32-wasip1`; override with `LLG_WASM_PY_TARGET=<target>`
+- default target is Pyodide/emscripten (`LLG_WASM_PY_TARGET=pyodide`)
+- Pyodide wheel artifact(s) are written to `target/pyodide-wheels`
+- this path requires Python 3.13; the script will use `mise` automatically if needed
+- optional overrides:
+  - `LLG_PYODIDE_XBUILDENV_VERSION` (default `0.29.3`)
+  - `LLG_PYODIDE_PYTHON_VERSION` (when using `mise`; default `3.13.2`)
+  - `LLG_PYODIDE_PYTHON_BIN` (explicit python binary)
+- to build WASI instead, run:
+  - `LLG_WASM_PY_TARGET=wasm32-wasip1 ./scripts/build-wasm-wheel.sh`
 
 ## Contributing
 

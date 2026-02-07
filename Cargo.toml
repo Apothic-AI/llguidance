@@ -22,7 +22,7 @@ default-members = [
 resolver = "2"
 
 [workspace.package]
-rust-version="1.87"
+rust-version="1.86"
 
 [profile.release]
 debug = 1

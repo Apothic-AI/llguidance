@@ -220,7 +220,7 @@ impl LLMatcher {
         if mask_ptr == 0 {
             return Err(PyValueError::new_err("Null pointer"));
         }
-        if !mask_ptr.is_multiple_of(4) {
+        if mask_ptr % 4 != 0 {
             return Err(PyValueError::new_err("Pointer not aligned"));
         }
         let n_words = self.tok_env.tok_trie().vocab_size().div_ceil(32);
